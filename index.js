@@ -1,12 +1,40 @@
-// how to import in the backend
+const http = require('http');
+// how to 'import' in the backend
 const express = require('express');
 const app = express()
+const server = http.createServer(app); // creates a plain, vanilla http server
+
+const WebSocket = require('ws');
+// Web Socket Server
+const wss = new WebSocket.Server({
+    server,         // piggybacking on the plain http server
+    path: '/chat'   // listen on only one route, allowing express to listen on its custom routes
+});
+
 app.use(express.urlencoded({extended: true}));
 
 // This is my "database"
 const db = [
     'welcome to the chat app!'
 ];
+
+wss.on('connection', (socket) => {
+    console.log('There is a new connection');
+    socket.send(JSON.stringify(db));
+
+    socket.on('message', (data) => {
+        console.log(data);
+        db.push(data);
+
+        console.log(db);
+        wss.clients.forEach((client) => {
+            if(client.readyState === WebSocket.OPEN){
+                client.send(JSON.stringify(data));
+            }
+        });
+        // socket.send(data);
+    });
+});
 
 // When GET request comes in, send back all the messages.
 app.get('/api', (req, res) => {
@@ -23,6 +51,6 @@ app.post('/api', (req, res) => {
     }) 
 })
 
-app.listen(31337, () => {
+server.listen(31337, () => {
     console.log(`You're doing it, Chris!`)
 });
